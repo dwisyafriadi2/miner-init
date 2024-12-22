@@ -32,17 +32,29 @@ delete_old_data() {
 # Function to fetch the latest binary from GitHub
 download_miner() {
     process_message "Downloading the latest Executor binary"
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/Project-InitVerse/miner/releases/latest | grep "browser_download_url" | cut -d '"' -f 4)
+    
+    # Fetch the latest release information from GitHub API
+    LATEST_RELEASE=$(curl -s https://api.github.com/repos/Project-InitVerse/miner/releases/latest \
+        | grep "browser_download_url.*iniminer-linux-x64" \
+        | cut -d '"' -f 4)
     
     if [ -z "$LATEST_RELEASE" ]; then
-        echo "Failed to fetch the latest release URL. Exiting."
+        echo "Failed to fetch the latest release URL for Linux binary. Exiting."
         exit 1
     fi
     
+    echo "Downloading from: $LATEST_RELEASE"
     wget "$LATEST_RELEASE" -O "$HOME_DIR/iniminer-linux-x64"
+    
+    if [ $? -ne 0 ]; then
+        echo "Failed to download the binary. Please check the URL."
+        exit 1
+    fi
+    
     chmod +x "$HOME_DIR/iniminer-linux-x64"
     echo "Download Done"
 }
+
 
 # Function to configure environment with user inputs
 configure_environment() {
