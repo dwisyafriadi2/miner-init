@@ -20,8 +20,8 @@ print_banner
 # Variables
 HOME_DIR=$(eval echo ~$USER)
 MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
-LOG_FILE="$HOME_DIR/miner.log"
-CONFIG_FILE="$HOME_DIR/miner_config.conf"
+LOG_FILE="$HOME_DIR/miner-init/miner.log"
+CONFIG_FILE="$HOME_DIR/miner-init/miner_config.conf"
 
 # Check if the binary exists
 process_message "Checking Miner Binary"
