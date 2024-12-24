@@ -74,8 +74,8 @@ start_miner() {
                 '"$CPU_FLAGS"' >> "'"$LOG_FILE"'" 2>&1
 
             EXIT_CODE=$?
-            echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 5 seconds..." | tee -a "'"$LOG_FILE"'"
-            sleep 5
+            echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 10 seconds..." | tee -a "'"$LOG_FILE"'"
+            sleep 10
         done
     ' >> "$LOG_FILE" 2>&1 &
 
