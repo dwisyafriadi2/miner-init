@@ -1,6 +1,8 @@
 #!/bin/bash
 
-# Start Miner Script
+# ---------------------------
+# Miner Start Script with Auto-Restart Logic
+# ---------------------------
 
 # Function to print the banner
 print_banner() {
@@ -19,6 +21,7 @@ print_banner
 HOME_DIR=$(eval echo ~$USER)
 MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
 LOG_FILE="$HOME_DIR/miner.log"
+CONFIG_FILE="$HOME_DIR/miner_config.conf"
 
 # Check if the binary exists
 process_message "Checking Miner Binary"
@@ -27,11 +30,29 @@ if [ ! -f "$MINER_BINARY" ]; then
     exit 1
 fi
 
-# Get user input for wallet address, worker name, and CPU devices
-process_message "Collecting User Input"
-read -p "Enter your Wallet Address: " WALLET_ADDRESS
-read -p "Enter your Worker Name: " WORKER_NAME
-read -p "Enter CPU Devices (comma-separated, e.g., 1,2): " CPU_DEVICES
+# Function to save user inputs to config
+save_config() {
+    echo "WALLET_ADDRESS=$WALLET_ADDRESS" > "$CONFIG_FILE"
+    echo "WORKER_NAME=$WORKER_NAME" >> "$CONFIG_FILE"
+    echo "CPU_DEVICES=$CPU_DEVICES" >> "$CONFIG_FILE"
+}
+
+# Function to load config
+load_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+        echo "✅ Configuration loaded from $CONFIG_FILE"
+    else
+        process_message "Collecting User Input"
+        read -p "Enter your Wallet Address: " WALLET_ADDRESS
+        read -p "Enter your Worker Name: " WORKER_NAME
+        read -p "Enter CPU Devices (comma-separated, e.g., 1,2): " CPU_DEVICES
+        save_config
+    fi
+}
+
+# Load or Collect Config
+load_config
 
 # Convert CPU devices to required format
 CPU_FLAGS=""
@@ -40,11 +61,20 @@ for DEVICE in "${DEVICES[@]}"; do
     CPU_FLAGS+="--cpu-devices $DEVICE "
 done
 
-# Start Miner
-process_message "Starting Miner with nohup"
-nohup "$MINER_BINARY" \
-    --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
-    $CPU_FLAGS > "$LOG_FILE" 2>&1 &
+# Function to start the miner
+start_miner() {
+    while true; do
+        process_message "Starting Miner..."
 
-echo "✅ Miner started successfully. Logs are saved in $LOG_FILE"
-echo "To monitor logs, run: tail -f $LOG_FILE"
+        "$MINER_BINARY" \
+            --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
+            $CPU_FLAGS >> "$LOG_FILE" 2>&1
+
+        EXIT_CODE=$?
+        echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 5 seconds..." | tee -a "$LOG_FILE"
+        sleep 5
+    done
+}
+
+# Start the miner with an infinite restart loop
+start_miner
