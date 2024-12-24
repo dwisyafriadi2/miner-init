@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------------------------
-# Miner Start Script with Auto-Restart Logic
+# Miner Start Script with Auto-Restart and nohup
 # ---------------------------
 
 # Function to print the banner
@@ -61,20 +61,28 @@ for DEVICE in "${DEVICES[@]}"; do
     CPU_FLAGS+="--cpu-devices $DEVICE "
 done
 
-# Function to start the miner
+# Function to start the miner with auto-restart using nohup
 start_miner() {
-    while true; do
-        process_message "Starting Miner..."
+    process_message "Starting Miner in the background with nohup and auto-restart"
 
-        "$MINER_BINARY" \
-            --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
-            $CPU_FLAGS >> "$LOG_FILE" 2>&1
+    nohup bash -c '
+        while true; do
+            echo -e "\n\e[42mStarting Miner...\e[0m\n" | tee -a "'"$LOG_FILE"'"
+            
+            "'"$MINER_BINARY"'" \
+                --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
+                '"$CPU_FLAGS"' >> "'"$LOG_FILE"'" 2>&1
 
-        EXIT_CODE=$?
-        echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 5 seconds..." | tee -a "$LOG_FILE"
-        sleep 5
-    done
+            EXIT_CODE=$?
+            echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 5 seconds..." | tee -a "'"$LOG_FILE"'"
+            sleep 5
+        done
+    ' >> "$LOG_FILE" 2>&1 &
+
+    MINER_PID=$!
+    echo "✅ Miner started in the background with PID $MINER_PID."
+    echo "Logs are being written to $LOG_FILE"
 }
 
-# Start the miner with an infinite restart loop
+# Start the miner
 start_miner
