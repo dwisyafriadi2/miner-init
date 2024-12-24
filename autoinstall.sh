@@ -31,6 +31,10 @@ prepare_directories() {
     process_message "Preparing directories"
     MINER_DIR="$HOME_DIR/miner-init"
     mkdir -p "$MINER_DIR"
+    if [ $? -ne 0 ]; then
+        echo "❌ Failed to create directory $MINER_DIR. Check permissions."
+        exit 1
+    fi
     echo "✅ Directory $MINER_DIR is ready."
 }
 
@@ -61,16 +65,16 @@ download_miner() {
         exit 1
     fi
     
-    echo "Downloading from: $LATEST_RELEASE"
+    echo "✅ Downloading from: $LATEST_RELEASE"
     wget "$LATEST_RELEASE" -O "$MINER_BINARY"
     
     if [ $? -ne 0 ]; then
-        echo "❌ Failed to download the binary. Please check the URL."
+        echo "❌ Failed to download the binary. Please check the URL and network connection."
         exit 1
     fi
     
     chmod +x "$MINER_BINARY"
-    echo "✅ Download Done"
+    echo "✅ Download Done. Binary is located at $MINER_BINARY"
 }
 
 # Function to save user inputs to config
@@ -78,6 +82,7 @@ save_config() {
     echo "WALLET_ADDRESS=$WALLET_ADDRESS" > "$CONFIG_FILE"
     echo "WORKER_NAME=$WORKER_NAME" >> "$CONFIG_FILE"
     echo "CPU_DEVICES=$CPU_DEVICES" >> "$CONFIG_FILE"
+    echo "✅ Configuration saved to $CONFIG_FILE"
 }
 
 # Function to load config
