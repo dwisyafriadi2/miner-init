@@ -34,7 +34,7 @@ download_miner() {
     process_message "Downloading the latest Executor binary"
     
     # Fetch the latest release information from GitHub API
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/Project-InitVerse/miner/releases/latest \
+    LATEST_RELEASE=$(wget https://api.github.com/repos/Project-InitVerse/miner/releases/latest \
         | grep "browser_download_url.*iniminer-linux-x64" \
         | cut -d '"' -f 4)
     
