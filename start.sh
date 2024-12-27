@@ -44,9 +44,18 @@ load_config() {
         echo "✅ Configuration loaded from $CONFIG_FILE"
     else
         process_message "Collecting User Input"
-        read -p "Enter your Wallet Address: " WALLET_ADDRESS
-        read -p "Enter your Worker Name: " WORKER_NAME
-        read -p "Enter CPU Devices (comma-separated, e.g., 1,2): " CPU_DEVICES
+        while [[ -z "$WALLET_ADDRESS" ]]; do
+            read -p "Enter your Wallet Address: " WALLET_ADDRESS
+        done
+
+        while [[ -z "$WORKER_NAME" ]]; do
+            read -p "Enter your Worker Name: " WORKER_NAME
+        done
+
+        while [[ -z "$CPU_DEVICES" ]]; do
+            read -p "Enter CPU Devices (comma-separated, e.g., 0,1,2): " CPU_DEVICES
+        done
+
         save_config
     fi
 }
@@ -83,6 +92,12 @@ start_miner() {
     echo "✅ Miner started in the background with PID $MINER_PID."
     echo "Logs are being written to $LOG_FILE"
 }
+
+# Display collected configuration
+echo -e "\n✅ Configuration Summary:"
+echo "Wallet Address: $WALLET_ADDRESS"
+echo "Worker Name: $WORKER_NAME"
+echo "CPU Devices: $CPU_DEVICES"
 
 # Start the miner
 start_miner
