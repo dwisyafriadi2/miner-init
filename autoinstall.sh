@@ -14,7 +14,7 @@ process_message() {
     echo -e "\n\e[42m$1...\e[0m\n" && sleep 1
 }
 
-# Function to check root/sudo and set the home directory
+# Function to check root/sudo and set home directory
 check_root() {
     process_message "Checking root privileges"
     if [ "$EUID" -ne 0 ]; then
@@ -41,7 +41,6 @@ delete_old_data() {
 download_miner() {
     process_message "Downloading the latest Executor binary"
 
-    # Fetch the latest release information from GitHub API
     LATEST_RELEASE=$(curl -s https://api.github.com/repos/Project-InitVerse/miner/releases/latest \
         | grep "browser_download_url.*iniminer-linux-x64" \
         | cut -d '"' -f 4)
@@ -67,7 +66,6 @@ download_miner() {
 configure_environment() {
     process_message "Configuring Environment"
 
-    # Collect user input with validation
     while [[ -z "$WALLET_ADDRESS" ]]; do
         read -p "Enter your Wallet Address: " WALLET_ADDRESS
     done
@@ -77,17 +75,15 @@ configure_environment() {
     done
     
     while [[ -z "$CPU_DEVICES" ]]; do
-        read -p "Enter CPU Devices (comma-separated, e.g., 0,1,2): " CPU_DEVICES
+        read -p "Enter CPU Devices (comma-separated, e.g., 1,2): " CPU_DEVICES
     done
 
-    # Convert CPU devices to the required format
     CPU_FLAGS=""
     IFS=',' read -ra DEVICES <<< "$CPU_DEVICES"
     for DEVICE in "${DEVICES[@]}"; do
         CPU_FLAGS+="--cpu-devices $DEVICE "
     done
 
-    # Save configuration
     CONFIG_FILE="$HOME_DIR/miner-init/miner_config.conf"
     echo "WALLET_ADDRESS=$WALLET_ADDRESS" > "$CONFIG_FILE"
     echo "WORKER_NAME=$WORKER_NAME" >> "$CONFIG_FILE"
@@ -95,23 +91,23 @@ configure_environment() {
     echo "✅ Configuration saved to $CONFIG_FILE."
 }
 
-# Function to start the miner in the background with nohup
+# Function to start the miner with nohup
 start_miner() {
     process_message "Starting Miner with nohup and auto-restart"
 
-    nohup bash -c '
+    nohup bash -c "
         while true; do
-            echo -e "\n\e[42mStarting Miner...\e[0m\n" | tee -a "'"$LOG_FILE"'"
+            echo -e '\n\e[42mStarting Miner...\e[0m\n' | tee -a '$LOG_FILE'
             
-            "'"$MINER_BINARY"'" \
-                --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
-                '"$CPU_FLAGS"' >> "'"$LOG_FILE"'" 2>&1
+            '$MINER_BINARY' \
+                --pool stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672 \
+                $CPU_FLAGS >> '$LOG_FILE' 2>&1
 
-            EXIT_CODE=$?
-            echo "❌ Miner crashed with exit code $EXIT_CODE. Restarting in 10 seconds..." | tee -a "'"$LOG_FILE"'"
+            EXIT_CODE=\$?
+            echo '❌ Miner crashed with exit code \$EXIT_CODE. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
             sleep 10
         done
-    ' >> "$LOG_FILE" 2>&1 &
+    " >> "$LOG_FILE" 2>&1 &
 
     MINER_PID=$!
     echo "✅ Miner started in the background with PID $MINER_PID."
