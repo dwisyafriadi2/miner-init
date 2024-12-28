@@ -100,11 +100,17 @@ start_miner() {
             echo -e '\n\e[42mStarting Miner...\e[0m\n' | tee -a '$LOG_FILE'
             
             '$MINER_BINARY' \
-                --pool stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672 \
+                --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672' \
                 $CPU_FLAGS >> '$LOG_FILE' 2>&1
 
             EXIT_CODE=\$?
-            echo '❌ Miner crashed with exit code \$EXIT_CODE. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
+            if [ \$EXIT_CODE -ne 0 ]; then
+                echo '❌ Miner crashed with exit code \$EXIT_CODE. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
+            else
+                echo '✅ Miner stopped gracefully. Exiting loop.' | tee -a '$LOG_FILE'
+                break
+            fi
+
             sleep 10
         done
     " >> "$LOG_FILE" 2>&1 &
@@ -113,6 +119,7 @@ start_miner() {
     echo "✅ Miner started in the background with PID $MINER_PID."
     echo "📄 Logs are saved to $LOG_FILE"
 }
+
 
 # Function to display configuration summary
 show_summary() {
