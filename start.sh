@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------------------------
-# Miner Start Script with Auto-Restart and nohup
+# Miner Start Script with Auto-Restart and Connection Suspension Handling
 # ---------------------------
 
 # Function to print the banner
@@ -95,16 +95,22 @@ start_miner() {
             
             '$MINER_BINARY' \
                 --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672' \
-                $CPU_FLAGS >> '$LOG_FILE' 2>&1
+                $CPU_FLAGS >> '$LOG_FILE' 2>&1 &
 
-            EXIT_CODE=\$?
-            if [ \$EXIT_CODE -ne 0 ]; then
-                echo '❌ Miner crashed with exit code \$EXIT_CODE. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
-            else
-                echo '✅ Miner stopped gracefully. Exiting loop.' | tee -a '$LOG_FILE'
-                break
-            fi
+            MINER_PID=\$!
+            echo \"✅ Miner started with PID \$MINER_PID.\" | tee -a '$LOG_FILE'
 
+            # Monitor the log for suspension messages
+            tail -F '$LOG_FILE' | while read LINE; do
+                if echo \"\$LINE\" | grep -q 'No connection. Suspend mining'; then
+                    echo \"⚠️ Connection suspended detected. Restarting miner...\" | tee -a '$LOG_FILE'
+                    kill \$MINER_PID
+                    wait \$MINER_PID 2>/dev/null
+                    break
+                fi
+            done
+
+            echo '❌ Miner crashed or connection suspended. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
             sleep 10
         done
     " >> "$LOG_FILE" 2>&1 &
