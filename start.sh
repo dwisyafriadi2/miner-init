@@ -19,7 +19,7 @@ print_banner
 HOME_DIR=$(eval echo ~$USER)
 MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
 LOG_FILE="$HOME_DIR/miner.log"
-WALLET_ADDRESS="0xB8944dFd481D8Afc1aF8396c6F655F2560cC5C95"
+WALLET_ADDRESS="INPUT_YOUR_ADDRESS"
 WORKER_NAME="VPS-1"
 
 # Input rentang perangkat CPU (misalnya "0,40" untuk perangkat dari 0 hingga 40)
