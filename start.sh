@@ -94,7 +94,7 @@ start_miner() {
             echo -e '\n\e[42mStarting Miner...\e[0m\n' | tee -a '$LOG_FILE'
             
             '$MINER_BINARY' \
-                --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672' \
+                --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@https://a.yatespool.com' \
                 $CPU_FLAGS >> '$LOG_FILE' 2>&1 &
 
             MINER_PID=\$!

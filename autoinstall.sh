@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ---------------------------
-# Miner Installer and Runner Script
+# Miner Start Script with Pool Selection and Auto-Restart
 # ---------------------------
 
 # Function to print the banner
@@ -14,129 +14,147 @@ process_message() {
     echo -e "\n\e[42m$1...\e[0m\n" && sleep 1
 }
 
-# Function to check root/sudo and set home directory
-check_root() {
-    process_message "Checking root privileges"
-    if [ "$EUID" -ne 0 ]; then
-        HOME_DIR="/home/$USER"
-        echo "✅ Running as user. Files will be saved to $HOME_DIR."
-    else
-        HOME_DIR="/root"
-        echo "✅ Running as root. Files will be saved to $HOME_DIR."
-    fi
+# Print the banner
+print_banner
 
-    MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
-    LOG_FILE="$HOME_DIR/miner-init/miner.log"
-}
+# ---------------------------
+# Variables
+# ---------------------------
+HOME_DIR=$(eval echo ~$USER)
+MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
+LOG_FILE="$HOME_DIR/miner-init/miner.log"
+CONFIG_FILE="$HOME_DIR/miner-init/miner_config.conf"
 
-# Function to delete old binaries and data
-delete_old_data() {
-    process_message "Deleting Old Data + Old Binary"
-    rm -rf "$MINER_BINARY" "$HOME_DIR/iniminer-linux-x64*" "$LOG_FILE"
-    mkdir -p "$HOME_DIR/miner-init"
-    echo "✅ Old data and binaries have been removed."
-}
+# Define Pools
+POOL_1="pool-a.yatespool.com:31588"
+POOL_2="pool-b.yatespool.com:32488"
 
-# Function to download the latest binary from GitHub
-download_miner() {
-    process_message "Downloading the latest Executor binary"
+# Ensure miner-init directory exists
+mkdir -p "$HOME_DIR/miner-init"
 
-    LATEST_RELEASE=$(curl -s https://api.github.com/repos/Project-InitVerse/miner/releases/latest \
-        | grep "browser_download_url.*iniminer-linux-x64" \
-        | cut -d '"' -f 4)
-    
-    if [ -z "$LATEST_RELEASE" ]; then
-        echo "❌ Failed to fetch the latest release URL for Linux binary. Exiting."
-        exit 1
-    fi
-    
-    echo "📥 Downloading from: $LATEST_RELEASE"
-    wget "$LATEST_RELEASE" -O "$MINER_BINARY"
-    
-    if [ $? -ne 0 ]; then
-        echo "❌ Failed to download the binary. Please check the URL."
-        exit 1
-    fi
-    
-    chmod +x "$MINER_BINARY"
-    echo "✅ Download Complete."
-}
+# ---------------------------
+# Check if Binary Exists
+# ---------------------------
+process_message "Checking Miner Binary"
+if [ ! -f "$MINER_BINARY" ]; then
+    echo "❌ Miner binary not found at $MINER_BINARY. Please run the setup script first."
+    exit 1
+fi
 
-# Function to configure environment with user inputs
-configure_environment() {
-    process_message "Configuring Environment"
-
-    while [[ -z "$WALLET_ADDRESS" ]]; do
-        read -p "Enter your Wallet Address: " WALLET_ADDRESS
-    done
-    
-    while [[ -z "$WORKER_NAME" ]]; do
-        read -p "Enter your Worker Name: " WORKER_NAME
-    done
-    
-    while [[ -z "$CPU_DEVICES" ]]; do
-        read -p "Enter CPU Devices (comma-separated, e.g., 1,2): " CPU_DEVICES
-    done
-
-    CPU_FLAGS=""
-    IFS=',' read -ra DEVICES <<< "$CPU_DEVICES"
-    for DEVICE in "${DEVICES[@]}"; do
-        CPU_FLAGS+="--cpu-devices $DEVICE "
-    done
-
-    CONFIG_FILE="$HOME_DIR/miner-init/miner_config.conf"
+# ---------------------------
+# Save User Inputs to Config
+# ---------------------------
+save_config() {
     echo "WALLET_ADDRESS=$WALLET_ADDRESS" > "$CONFIG_FILE"
     echo "WORKER_NAME=$WORKER_NAME" >> "$CONFIG_FILE"
     echo "CPU_DEVICES=$CPU_DEVICES" >> "$CONFIG_FILE"
-    echo "✅ Configuration saved to $CONFIG_FILE."
+    echo "SELECTED_POOL=$SELECTED_POOL" >> "$CONFIG_FILE"
 }
 
-# Function to start the miner with nohup
+# ---------------------------
+# Load Configuration
+# ---------------------------
+load_config() {
+    if [ -f "$CONFIG_FILE" ]; then
+        source "$CONFIG_FILE"
+        echo "✅ Configuration loaded from $CONFIG_FILE"
+    else
+        process_message "Collecting User Input"
+        while [[ -z "$WALLET_ADDRESS" ]]; do
+            read -p "Enter your Wallet Address: " WALLET_ADDRESS
+        done
+
+        while [[ -z "$WORKER_NAME" ]]; do
+            read -p "Enter your Worker Name: " WORKER_NAME
+        done
+
+        while [[ -z "$CPU_DEVICES" ]]; do
+            read -p "Enter CPU Devices (comma-separated, e.g., 0,1,2): " CPU_DEVICES
+        done
+
+        while [[ -z "$SELECTED_POOL" ]]; do
+            echo -e "\nChoose a mining pool:"
+            echo "1) $POOL_1"
+            echo "2) $POOL_2"
+            read -p "Select pool (1 or 2): " POOL_SELECTION
+            case $POOL_SELECTION in
+                1)
+                    SELECTED_POOL=$POOL_1
+                    ;;
+                2)
+                    SELECTED_POOL=$POOL_2
+                    ;;
+                *)
+                    echo "Invalid selection. Please choose 1 or 2."
+                    SELECTED_POOL=""
+                    ;;
+            esac
+        done
+
+        save_config
+    fi
+}
+
+# Load Configuration
+load_config
+
+# ---------------------------
+# Format CPU Devices
+# ---------------------------
+CPU_FLAGS=""
+IFS=',' read -ra DEVICES <<< "$CPU_DEVICES"
+for DEVICE in "${DEVICES[@]}"; do
+    CPU_FLAGS+="--cpu-devices $DEVICE "
+done
+
+# ---------------------------
+# Start Miner with Selected Pool
+# ---------------------------
 start_miner() {
-    process_message "Starting Miner with nohup and auto-restart"
+    process_message "Starting Miner with Pool: $SELECTED_POOL"
 
     nohup bash -c "
         while true; do
-            echo -e '\n\e[42mStarting Miner...\e[0m\n' | tee -a '$LOG_FILE'
+            echo -e '\n\e[42mStarting Miner on $SELECTED_POOL...\e[0m\n' | tee -a '$LOG_FILE'
             
             '$MINER_BINARY' \
-                --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672' \
-                $CPU_FLAGS >> '$LOG_FILE' 2>&1
+                --pool 'stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@$SELECTED_POOL' \
+                $CPU_FLAGS >> '$LOG_FILE' 2>&1 &
 
-            EXIT_CODE=\$?
-            if [ \$EXIT_CODE -ne 0 ]; then
-                echo '❌ Miner crashed with exit code \$EXIT_CODE. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
-            else
-                echo '✅ Miner stopped gracefully. Exiting loop.' | tee -a '$LOG_FILE'
-                break
-            fi
+            MINER_PID=\$!
+            echo \"✅ Miner started with PID \$MINER_PID on Pool $SELECTED_POOL.\" | tee -a '$LOG_FILE'
 
+            # Monitor the log for suspension messages
+            tail -F '$LOG_FILE' | while read LINE; do
+                if echo \"\$LINE\" | grep -q 'No connection. Suspend mining'; then
+                    echo \"⚠️ Connection suspended detected. Restarting miner...\" | tee -a '$LOG_FILE'
+                    kill \$MINER_PID
+                    wait \$MINER_PID 2>/dev/null
+                    break
+                fi
+            done
+
+            echo '❌ Miner crashed or connection suspended. Restarting in 10 seconds...' | tee -a '$LOG_FILE'
             sleep 10
         done
     " >> "$LOG_FILE" 2>&1 &
 
     MINER_PID=$!
     echo "✅ Miner started in the background with PID $MINER_PID."
-    echo "📄 Logs are saved to $LOG_FILE"
-}
-
-
-# Function to display configuration summary
-show_summary() {
-    echo -e "\n✅ **Configuration Summary:**"
-    echo "Wallet Address: $WALLET_ADDRESS"
-    echo "Worker Name: $WORKER_NAME"
-    echo "CPU Devices: $CPU_DEVICES"
-    echo "Miner Log: $LOG_FILE"
+    echo "📄 Logs are being written to $LOG_FILE"
 }
 
 # ---------------------------
-# Main Script Execution
+# Display Configuration Summary
 # ---------------------------
-print_banner
-check_root
-delete_old_data
-download_miner
-configure_environment
-show_summary
+echo -e "\n✅ **Configuration Summary:**"
+echo "Wallet Address: $WALLET_ADDRESS"
+echo "Worker Name: $WORKER_NAME"
+echo "CPU Devices: $CPU_DEVICES"
+echo "Selected Pool: $SELECTED_POOL"
+echo "Log File: $LOG_FILE"
+
+# ---------------------------
+# Start Miner
+# ---------------------------
 start_miner

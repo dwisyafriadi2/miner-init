@@ -32,8 +32,8 @@ for /L %%i in (0,1,%CPU_CORES%-1) do (
 :: Step 4: Navigate to the iniminer folder and run the miner
 cd iniminer
 echo Starting the miner with your configuration...
-echo Command: iniminer.exe --pool stratum+tcp://%WALLET_ADDRESS%.%WORKER_NAME%@pool-core-testnet.inichain.com:32672 %CPU_DEVICES_ARGS%
-iniminer.exe --pool stratum+tcp://%WALLET_ADDRESS%.%WORKER_NAME%@pool-core-testnet.inichain.com:32672 %CPU_DEVICES_ARGS%
+echo Command: iniminer.exe --pool stratum+tcp://%WALLET_ADDRESS%.%WORKER_NAME%@pool-b.yatespool.com:32488 %CPU_DEVICES_ARGS%
+iniminer.exe --pool stratum+tcp://%WALLET_ADDRESS%.%WORKER_NAME%@pool-b.yatespool.com:32488 %CPU_DEVICES_ARGS%
 
 :: End of script
 echo Miner is running. Do not close this window unless you want to stop the miner.
