@@ -43,9 +43,7 @@ fi
 
 # Function to start the miner and log it
 start_miner() {
-<<<<<<< HEAD
     process_message "Starting Miner in the background with nohup and auto-restart"
-
     nohup bash -c "
         while true; do
             echo -e '\n\e[42mStarting Miner...\e[0m\n' | tee -a '$LOG_FILE'
@@ -72,12 +70,11 @@ start_miner() {
         done
     " >> "$LOG_FILE" 2>&1 &
 
-=======
+
     process_message "Starting Miner with nohup"
     nohup "$MINER_BINARY" \
         --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
         $CPU_FLAGS > "$LOG_FILE" 2>&1 &
->>>>>>> aa02117ed73f9f21d845565f6ec5848283636723
     MINER_PID=$!
     echo " ^|^e Miner started successfully. Logs are saved in $LOG_FILE"
     echo "Miner process ID: $MINER_PID"
