@@ -1,15 +1,13 @@
 #!/bin/bash
 
-# ---------------------------
-# Miner Start Script with Auto-Restart and Connection Suspension Handling
-# ---------------------------
+# Start Miner Script
 
 # Function to print the banner
 print_banner() {
     curl -s https://raw.githubusercontent.com/dwisyafriadi2/logo/main/logo.sh | bash
 }
 
-# Function to display process messages
+# Function to display process message with sleep
 process_message() {
     echo -e "\n\e[42m$1...\e[0m\n" && sleep 1
 }
@@ -17,76 +15,35 @@ process_message() {
 # Print the banner
 print_banner
 
-# ---------------------------
 # Variables
-# ---------------------------
 HOME_DIR=$(eval echo ~$USER)
 MINER_BINARY="$HOME_DIR/iniminer-linux-x64"
-LOG_FILE="$HOME_DIR/miner-init/miner.log"
-CONFIG_FILE="$HOME_DIR/miner-init/miner_config.conf"
+LOG_FILE="$HOME_DIR/miner.log"
+WALLET_ADDRESS="INPUT_YOUR_ADDRESS"
+WORKER_NAME="VPS-1"
 
-# Ensure miner-init directory exists
-mkdir -p "$HOME_DIR/miner-init"
+# Input rentang perangkat CPU (misalnya "0,40" untuk perangkat dari 0 hingga 40)
+CPU_RANGE="0,40"
 
-# ---------------------------
-# Check if Binary Exists
-# ---------------------------
+# Pisahkan input rentang menjadi START dan END
+IFS=',' read -r START END <<< "$CPU_RANGE"
+
+# Generate CPU devices range from START to END
+CPU_FLAGS=""
+for ((i=$START; i<=$END; i++)); do
+    CPU_FLAGS+="--cpu-devices $i "
+done
+
+# Check if the miner binary exists
 process_message "Checking Miner Binary"
 if [ ! -f "$MINER_BINARY" ]; then
-    echo "❌ Miner binary not found at $MINER_BINARY. Please run the setup script first."
+    echo " ^}^l Miner binary not found at $MINER_BINARY. Please run the setup script first."
     exit 1
 fi
 
-# ---------------------------
-# Save User Inputs to Config
-# ---------------------------
-save_config() {
-    echo "WALLET_ADDRESS=$WALLET_ADDRESS" > "$CONFIG_FILE"
-    echo "WORKER_NAME=$WORKER_NAME" >> "$CONFIG_FILE"
-    echo "CPU_DEVICES=$CPU_DEVICES" >> "$CONFIG_FILE"
-}
-
-# ---------------------------
-# Load Configuration
-# ---------------------------
-load_config() {
-    if [ -f "$CONFIG_FILE" ]; then
-        source "$CONFIG_FILE"
-        echo "✅ Configuration loaded from $CONFIG_FILE"
-    else
-        process_message "Collecting User Input"
-        while [[ -z "$WALLET_ADDRESS" ]]; do
-            read -p "Enter your Wallet Address: " WALLET_ADDRESS
-        done
-
-        while [[ -z "$WORKER_NAME" ]]; do
-            read -p "Enter your Worker Name: " WORKER_NAME
-        done
-
-        while [[ -z "$CPU_DEVICES" ]]; do
-            read -p "Enter CPU Devices (comma-separated, e.g., 0,1,2): " CPU_DEVICES
-        done
-
-        save_config
-    fi
-}
-
-# Load Configuration
-load_config
-
-# ---------------------------
-# Format CPU Devices
-# ---------------------------
-CPU_FLAGS=""
-IFS=',' read -ra DEVICES <<< "$CPU_DEVICES"
-for DEVICE in "${DEVICES[@]}"; do
-    CPU_FLAGS+="--cpu-devices $DEVICE "
-done
-
-# ---------------------------
-# Start Miner with nohup and Auto-Restart
-# ---------------------------
+# Function to start the miner and log it
 start_miner() {
+<<<<<<< HEAD
     process_message "Starting Miner in the background with nohup and auto-restart"
 
     nohup bash -c "
@@ -115,21 +72,34 @@ start_miner() {
         done
     " >> "$LOG_FILE" 2>&1 &
 
+=======
+    process_message "Starting Miner with nohup"
+    nohup "$MINER_BINARY" \
+        --pool "stratum+tcp://${WALLET_ADDRESS}.${WORKER_NAME}@pool-core-testnet.inichain.com:32672" \
+        $CPU_FLAGS > "$LOG_FILE" 2>&1 &
+>>>>>>> aa02117ed73f9f21d845565f6ec5848283636723
     MINER_PID=$!
-    echo "✅ Miner started in the background with PID $MINER_PID."
-    echo "📄 Logs are being written to $LOG_FILE"
+    echo " ^|^e Miner started successfully. Logs are saved in $LOG_FILE"
+    echo "Miner process ID: $MINER_PID"
 }
 
-# ---------------------------
-# Display Configuration Summary
-# ---------------------------
-echo -e "\n✅ **Configuration Summary:**"
-echo "Wallet Address: $WALLET_ADDRESS"
-echo "Worker Name: $WORKER_NAME"
-echo "CPU Devices: $CPU_DEVICES"
-echo "Log File: $LOG_FILE"
+# Loop to ensure the miner is always running
+while true; do
+    # Start the miner
+    start_miner
 
-# ---------------------------
-# Start Miner
-# ---------------------------
-start_miner
+    # Wait for the miner to start and ensure it's running
+    sleep 5
+
+    # Check if the miner is running
+    if ps -p $MINER_PID > /dev/null; then
+        echo "Miner is running, monitoring logs..."
+        tail -f "$LOG_FILE" &  # Start tailing the log
+        wait $MINER_PID         # Wait for the miner to finish
+    else
+        echo " ^}^l Miner stopped or disconnected. Restarting..."
+    fi
+
+    # Restart the miner after 5 seconds if it stops
+    sleep 5
+done
